@@ -2,6 +2,15 @@ import React, { useState } from "react";
 import { AiFillEyeInvisible, AiFillEye } from "react-icons/ai";
 import { Link } from "react-router-dom";
 import OAuth from "../components/OAuth";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { db } from "../firebase";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
@@ -9,6 +18,10 @@ export default function SignUp() {
     email: "",
     password: "",
   });
+  // redirect the user after sign up to the home page
+  const navigate = useNavigate();
+
+  //for frontend password showing with the eye button
   const [showPassword, setShowPassword] = useState(false);
 
   // Destructure the email and password form formData
@@ -21,6 +34,46 @@ export default function SignUp() {
       ...prevState,
       [e.target.id]: e.target.value,
     }));
+  }
+  // submitting the form
+  async function onSubmit(e) {
+    e.preventDefault();
+    try {
+      const auth = getAuth();
+      const userCredentials = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      //updating the display name from name above formData variable
+
+      updateProfile(auth.currentUser, {
+        displayName: name,
+      });
+
+      //getting the user credentials
+
+      const user = userCredentials.user;
+      const formDataCopy = { ...formData };
+      delete formDataCopy.password;
+
+      //getting the server timestamp
+
+      formDataCopy.timestamp = serverTimestamp();
+
+      //adding the person to the database
+
+      await setDoc(doc(db, "users", user.uid), formDataCopy);
+
+      toast.success("Signup is successfull");
+
+      //navigate to the home page
+
+      navigate("/");
+    } catch (error) {
+      toast.error("Something went wrong with the registration");
+    }
   }
 
   return (
@@ -35,7 +88,7 @@ export default function SignUp() {
           />
         </div>
         <div className="w-full md:w-[67%] lg:w-[40%] lg:ml-20">
-          <form>
+          <form onSubmit={onSubmit}>
             <input
               type="name"
               id="name"
